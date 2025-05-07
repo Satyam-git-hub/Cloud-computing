@@ -1,129 +1,166 @@
-# **EC2-AUTOMATION-WITH-TERRAFORM**
+# **EC2 Automation with Terraform**
 
-This README provides detailed steps on how to set up and automate the **EC2 Instance** using **Terraform**.
+This guide helps you automate the deployment of an **Amazon EC2 instance** using **Terraform**—an open-source infrastructure as code (IaC) tool that enables repeatable, predictable cloud deployments.
 
 ---
 
-## **1. Install Terraform**
+## ✅ **Prerequisites**
 
-- Download Terraform from their website [Terraform Download](https://www.terraform.io/).
-- Verify installation:
+* **AWS Account**
+* **IAM User** with programmatic access and proper permissions (EC2, VPC, etc.)
+* **Access Key ID** and **Secret Access Key**
+* **Terraform** installed: [Install Terraform](https://developer.hashicorp.com/terraform/downloads)
+* **AWS CLI** installed (optional, but recommended): [Install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+
+---
+
+## 📁 **Project Structure**
+
 ```bash
-terraform -v
+ec2-terraform/
+│
+├── main.tf          # Main Terraform config
+├── variables.tf     # Input variables
+├── outputs.tf       # Outputs after provisioning
+├── terraform.tfvars # Variable values (optional)
 ```
 
-![1](https://github.com/user-attachments/assets/d57c1e31-f555-4ed0-8aef-fcb8709ef454)
-
 ---
 
-## **2. Configure AWS Credentials**
+## 🔧 **Step 1: Create Terraform Configuration**
 
-- Terraform needs access to AWS. Setup your credentials using:
-```bash
-aws configure
-```
+### `main.tf`
 
-![2](https://github.com/user-attachments/assets/82263952-781f-42e1-9ea8-a2c27797248f)
-
----
-
-## **3. Create a Terraform Configuration File**
-
-- Create a new directory for your Terraform project and create a file named main.tf.
-```bash
-mkdir terraform-ec2 && cd terraform-ec2
-touch main.tf
-```
-
-![3](https://github.com/user-attachments/assets/13ef8614-9cd0-41ab-8bf2-96ad3927e5c8)
-
----
-
-## **4. Write Terraform Configuration for EC2**
-
-- Edit main.tf and add the following configuration:
-```bash
+```hcl
 provider "aws" {
-  region = "us-east-1"  # Change to your preferred region
+  region     = var.aws_region
+  access_key = var.aws_access_key
+  secret_key = var.aws_secret_key
 }
 
-resource "aws_instance" "example" {
-  ami           = "ami-0c55b159cbfafe1f0"  # Amazon Linux AMI (Check for your region)
-  instance_type = "t2.micro"
+resource "aws_instance" "ec2_example" {
+  ami           = var.ami_id
+  instance_type = var.instance_type
+  key_name      = var.key_name
 
   tags = {
-    Name = "MyTerraformInstance"
+    Name = "Terraform-EC2"
   }
 }
 ```
 
-![4](https://github.com/user-attachments/assets/67d56f09-7625-49a4-acb4-25e790e0f78e)
+---
+
+### `variables.tf`
+
+```hcl
+variable "aws_region" {
+  default = "us-east-1"
+}
+
+variable "aws_access_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "aws_secret_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "ami_id" {
+  default = "ami-0c94855ba95c71c99"  # Ubuntu 20.04 in us-east-1
+}
+
+variable "instance_type" {
+  default = "t2.micro"
+}
+
+variable "key_name" {
+  description = "Existing AWS key pair name"
+}
+```
 
 ---
 
-## **5. Initialize Terraform**
+### `outputs.tf`
 
-- Run the following command to initialize Terraform:
+```hcl
+output "instance_id" {
+  value = aws_instance.ec2_example.id
+}
+
+output "public_ip" {
+  value = aws_instance.ec2_example.public_ip
+}
+```
+
+---
+
+### `terraform.tfvars` (Optional: or input manually on plan/apply)
+
+```hcl
+aws_access_key = "YOUR_ACCESS_KEY"
+aws_secret_key = "YOUR_SECRET_KEY"
+key_name       = "your-existing-keypair"
+```
+
+---
+
+## 🚀 **Step 2: Initialize & Apply**
+
+Run these Terraform CLI commands in your project directory:
+
 ```bash
+# Initialize Terraform providers and state
 terraform init
-```
 
-![5](https://github.com/user-attachments/assets/d889bba6-c647-4f4e-8ce2-b1070f5e3324)
-
----
-
-## **6. Validate and Plan**
-
-- heck for syntax errors and see what Terraform will create:
-```bash
-terraform validate
+# Review the resources Terraform will create
 terraform plan
+
+# Apply the configuration to create EC2
+terraform apply
 ```
 
-![6](https://github.com/user-attachments/assets/320856ef-395c-4056-b4c0-0fef93fd63d1)
+When prompted, type `yes` to approve the deployment.
 
 ---
 
-## **7. Apply the Configuration**
+## ✅ **Expected Output**
 
-- To create the EC2 instance, run:
+Terraform will output your EC2 instance ID and its public IP:
+
 ```bash
-terraform apply -auto-approve
-```
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
 
-![7](https://github.com/user-attachments/assets/988dcda5-8ef0-4241-a2e8-b585e04170f0)
-![8](https://github.com/user-attachments/assets/382bdb26-76ae-424c-8ba4-10d77f817786)
+Outputs:
+instance_id = "i-0123456789abcdef0"
+public_ip   = "3.92.165.123"
+```
 
 ---
 
-## **8. Verify the Instance**
+## 🧹 **Destroy Resources**
 
-- Once the instance is created, you can verify it:
+To tear down the EC2 instance:
+
 ```bash
-aws ec2 describe-instances --query 'Reservations[*].Instances[*].[InstanceId,State.Name,PublicIpAddress]' --output table
+terraform destroy
 ```
-
-![9](https://github.com/user-attachments/assets/d2497593-6c30-45c2-8761-fd6c2b2dc4fc)
-
-- Or check in the AWS Console.
-
-![10](https://github.com/user-attachments/assets/10f02230-fde0-4f5f-951e-92cfc2ae3c29)
 
 ---
 
-## **9. Destroy the Instance**
+## 📌 Notes
 
-- If you want to delete the EC2 instance, run:
-```bash
-terraform destroy -auto-approve
-```
-
-![11](https://github.com/user-attachments/assets/2497b0cf-2584-457f-aa2d-baf637e7bc7e)
-![12](https://github.com/user-attachments/assets/1e670c1e-c003-47b5-a173-e62ed99381e9)
+* **Security Group**: You can define a security group in the config or use the default. To open ports like SSH (22), include a security group resource.
+* **Key Pair**: You must create a key pair in AWS beforehand or define one in Terraform.
+* **State Management**: `terraform.tfstate` tracks what Terraform manages—don't delete or edit it manually.
 
 ---
 
-## **10. Conclusion**
+## 📚 Resources
 
-- You now have automated your EC2 instance using Terraform. With this you can create/destroy any instance you want to without opening the AWS console.
-- For more advanced configurations, refer to the [Devstack Documentation](https://github.com/openstack/devstack)
+* [Terraform AWS Provider Docs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+* [AWS EC2 Docs](https://docs.aws.amazon.com/ec2/index.html)
+
+---
